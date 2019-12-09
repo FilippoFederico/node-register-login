@@ -1,12 +1,35 @@
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config()
+}
+
 const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt');
+const passport = require('passport')
+const flash = require('express-flash')
+const session = require('express-session')
+
+const initializePassport = require('./passport-config')
+initializePassport(
+    passport,
+    mail => users.find(user => user.mail === mail), // per trovare l'user in base alla mail
+    id => users.find(user => user.id === id) // 
+)
 
 // variabile dove salvare i dati immessi nel form
 const users = []
 
 app.set('view-engine', 'ejs');
 app.use(express.urlencoded({ extended: false })); // prendere email e password per creare la post nel nostro metodo
+app.use(flash()) // express-flash
+app.use(session({ // express-session
+    secret: process.env.SESSION_SECRET, // chiave che vogliamo tener nascosta
+    resave: false,
+    saveUninitialized: false
+}))
+
+app.use(passport.initialize()) 
+app.use(passport.session()) // store a vairiable
 
 /// -------- HOME ----------
 
@@ -23,9 +46,11 @@ app.get('/login', (req, res) => {
 })
 
 // router POST /login
-app.post('/login', (req, res) => {
-
-})
+app.post('/login', passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/login',
+    failureFlash: true // per avere il message di passport-config nell initialize function
+}))
 
 /// -------- REGISTER ----------
 
@@ -47,14 +72,15 @@ app.post('/register', async (req, res) => {
         })
         // redirect alla pagina login
         res.redirect('/login')
-        
+        console.log('REGISTER FORM OK')
+
     } catch {
         res.redirect('/register')
-        console.log('ERROR REDIRECT')
+        console.log('ERROR IN REGISTER FORM')
     }
     console.log('USER: ', users)
 })
 
-app.listen(4000)
+app.listen(5000)
 
 // https://www.youtube.com/watch?v=-RCnNyD0L-s&t=437s
